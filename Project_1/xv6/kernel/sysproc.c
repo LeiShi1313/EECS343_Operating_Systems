@@ -96,6 +96,5 @@ sys_getprocs(void)
   // not understand how syscalls get arg yet, but it seems like the correct way
   struct ProcessInfo* p;
   if (argptr(0, (char**)&p, sizeof(struct ProcessInfo) * NPROC) < 0) return -1;
-  cprintf("Hi it\'s sysproc.c\n");
   return getprocs(p);
 }

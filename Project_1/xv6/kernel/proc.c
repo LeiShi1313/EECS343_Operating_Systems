@@ -450,7 +450,6 @@ getprocs(struct ProcessInfo* processInfoTable)
   struct proc *p;
   int i, j;
   int count = 0;
-  cprintf("Hi it\'s proc.c\n");
   acquire(&ptable.lock);
   for (p = ptable.proc, i = 0; p < &ptable.proc[NPROC] && i < NPROC; p++, i++) {
     if (p->state == UNUSED) continue;
