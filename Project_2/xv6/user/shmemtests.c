@@ -187,6 +187,34 @@ beforeRequestingSharedMemory_countReturns0()
   }
 }
 
+void
+twoChildAccessPage12()
+{
+  printf(1, "Test: twoChildAccessPage10...");
+
+  char* sharedPage = shmem_access(0);
+  char* sharedPage2 = shmem_access(2);
+  sharedPage[0] = 12;
+  sharedPage2[0] = 11;
+
+  int pid0 = fork();
+  if (pid0 == 0) {
+    char* child0SharedPage0 = shmem_access(0);
+    char* child0SharedPage1 = shmem_access(1);
+    child0SharedPage1[0]++;
+    child0SharedPage0[0] += child0SharedPage1[0];
+    exit();
+  } else {
+    wait();
+    if (sharedPage[0] != 13) {
+        testFailed();
+        expectedVersusActualNumeric("sharedPage[0]", 13, sharedPage[0]);
+    } else {
+        testPassed();
+    }
+  }
+}
+
 int
 main(void)
 {
@@ -243,6 +271,12 @@ main(void)
   }
   wait();
 
+  pid = fork();
+  if (pid == 0) {
+    twoChildAccessPage12();
+    exit();
+  }
+  wait();
 
   exit();
 }

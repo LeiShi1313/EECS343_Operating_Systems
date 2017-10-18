@@ -34,7 +34,6 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-  int i;
 
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -68,9 +67,6 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-  for (i = 0; i < SHMEMMAX; i++) {
-    p->shmem[i] = 0;
-  }
   return p;
 }
 
@@ -87,6 +83,7 @@ userinit(void)
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+  shmem_init(p);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
@@ -160,8 +157,10 @@ fork(void)
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   
+  np->shmemcount = proc->shmemcount;
   for (i = 0; i < SHMEMMAX; i++) {
-    np->shmem[i] = proc->shmem[i];
+    np->shmemaddr[i] = proc->shmemaddr[i];
+    np->shmemvaddr[i] = proc->shmemvaddr[i];
   }
   shmem_fork(np);
   return pid;

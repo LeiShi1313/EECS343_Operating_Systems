@@ -56,7 +56,7 @@ seginit(void)
 // Initilize shared memory's lock, counter 
 // and addresses.
 void
-shmem_init(void)
+shmem_ginit(void)
 {
   int i;
   initlock(&shmems.lock, "shmems");
@@ -66,6 +66,16 @@ shmem_init(void)
     shmems.addr[i] = NULL;
   }
   release(&shmems.lock);
+}
+
+void
+shmem_init(struct proc* p) {
+  int i;
+  for (i = 0; i < SHMEMMAX; i++) {
+    p->shmemaddr[i] = NULL;
+    p->shmemvaddr[i] = NULL;
+  }
+  p->shmemcount = 0;
 }
 
 // Return the address of the PTE in page table pgdir
@@ -248,14 +258,14 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 // Allocate page tables and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 int
-allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
+allocuvm(pde_t* pgdir, uint oldsz, uint newsz)
 {
   char *mem;
   uint a;
 
   // Currently mem for shared mem cannot be alloc
   // Will change in extra credit
-  if(newsz > USERTOP - PGSIZE * SHMEMMAX)
+  if(newsz > USERTOP)
     return 0;
   if(newsz < oldsz)
     return oldsz;
@@ -326,7 +336,7 @@ shmem_free(struct proc *p)
   for (i = 0; i < SHMEMMAX; i++) {
     // cprintf("\nshmem_free: shmems.count: %d\t p->shmem[i]: %d, name: %s\n", 
     //         shmems.count[i], p->shmem[i], p->name);
-    if (p->shmem[i]) {
+    if (p->shmemaddr[i]) {
       shmems.count[i]--;
       // cprintf("shmem_free: addr: %p\n", shmems.addr[i]);
       if (shmems.count[i] == 0 && shmems.addr[i]) {
@@ -334,8 +344,10 @@ shmem_free(struct proc *p)
         shmems.addr[i] = NULL;
       }
     }
-    p->shmem[i] = 0;
+    p->shmemaddr[i] = NULL;
+    p->shmemvaddr[i] = NULL;
   }
+  p->shmemcount = 0;
   release(&shmems.lock);
 }
 
@@ -344,7 +356,7 @@ void shmem_fork(struct proc *p)
   int i;
   acquire(&shmems.lock);
   for (i = 0; i < SHMEMMAX; i++) {
-    if (p->shmem[i]) {
+    if (p->shmemaddr[i]) {
       shmems.count[i]++;
     }
   }
@@ -431,30 +443,35 @@ shmem_access(int page_number)
   if (page_number < 0 || page_number >= SHMEMMAX)
     return NULL;
 
-  vaddr = (void*)(USERTOP - PGSIZE * (page_number + 1)); 
-
-  // cprintf("\nshmem_access: name: %s\t count: %d\t pid: %d\n", proc->name, proc->shmem[page_number], proc->pid);
-  acquire(&shmems.lock);
-  if (proc->shmem[page_number]) {
-    if (mappages(proc->pgdir, vaddr, PGSIZE, PADDR(shmems.addr[page_number]), PTE_W|PTE_U) < 0) {
-      release(&shmems.lock);
+  if (proc->shmemvaddr[page_number]) {
+    vaddr = proc->shmemvaddr[page_number];
+    if (mappages(proc->pgdir, vaddr, PGSIZE, PADDR(proc->shmemaddr[page_number]), PTE_W|PTE_U) < 0) {
+      cprintf("map shared memory failed!");
       return NULL;
     }
-    release(&shmems.lock);
-    return vaddr;
+    return proc->shmemvaddr[page_number];
   }
 
+  vaddr = (void*)USERTOP - PGSIZE * (proc->shmemcount + 1);
+  // cprintf("\nshmem_access: name: %s\t addr: %d\t vaddr: %d\t pid: %d\t count: %d\t page: %d\t vaddr:%d\n", proc->name, proc->shmemaddr[page_number], proc->shmemvaddr[page_number], proc->pid, proc->shmemcount, page_number, vaddr);
+
+  acquire(&shmems.lock);
   if ((shmems.addr[page_number] = kalloc()) == 0) {
-    proc->shmem[page_number] = 0;
+    proc->shmemaddr[page_number] = NULL;
+    proc->shmemvaddr[page_number] = NULL;
     release(&shmems.lock);
     cprintf("shared memory out of memory");
     return NULL;
   }
   
+  // cprintf("\nshmem_access: name: %s\t addr: %d\t pid: %d\t page:%d\n", proc->name, proc->shmemaddr[page_number], proc->pid, page_number);
+  // cprintf("shmem_access: addr: %d\n", shmems.addr[page_number]);
   mappages(proc->pgdir, vaddr, PGSIZE, PADDR(shmems.addr[page_number]), PTE_W|PTE_U);
+  memset(shmems.addr[page_number], 0, PGSIZE);
   shmems.count[page_number]++;
-  proc->shmem[page_number] = 1;
-  // cprintf("\nshmem_access: name: %s\t count: %d\n", proc->name, proc->shmem[page_number]);
+  proc->shmemcount++;
+  proc->shmemaddr[page_number] = shmems.addr[page_number];
+  proc->shmemvaddr[page_number] = vaddr;
   // cprintf("\nshmem_access: addr: %d\n", shmems.addr[page_number]);
   release(&shmems.lock);
 
