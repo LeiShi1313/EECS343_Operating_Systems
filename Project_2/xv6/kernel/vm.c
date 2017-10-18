@@ -329,8 +329,10 @@ shmem_free(struct proc *p)
     if (p->shmem[i]) {
       shmems.count[i]--;
       // cprintf("shmem_free: addr: %p\n", shmems.addr[i]);
-      if (shmems.count[i] == 0 && shmems.addr[i])
+      if (shmems.count[i] == 0 && shmems.addr[i]) {
         kfree((char*)shmems.addr[i]);
+        shmems.addr[i] = NULL;
+      }
     }
     p->shmem[i] = 0;
   }
@@ -431,12 +433,12 @@ shmem_access(int page_number)
 
   vaddr = (void*)(USERTOP - PGSIZE * (page_number + 1)); 
 
+  // cprintf("\nshmem_access: name: %s\t count: %d\t pid: %d\n", proc->name, proc->shmem[page_number], proc->pid);
   acquire(&shmems.lock);
-  if (shmems.addr[page_number]) {
-    // cprintf("\nshmem_access: name: %s\t count: %d\n", proc->name, proc->shmem[page_number]);
-    if (proc->shmem[page_number] == 0) {
-      proc->shmem[page_number] = 1;
-      shmems.count[page_number]++;
+  if (proc->shmem[page_number]) {
+    if (mappages(proc->pgdir, vaddr, PGSIZE, PADDR(shmems.addr[page_number]), PTE_W|PTE_U) < 0) {
+      release(&shmems.lock);
+      return NULL;
     }
     release(&shmems.lock);
     return vaddr;
