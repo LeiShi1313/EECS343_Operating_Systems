@@ -445,9 +445,12 @@ shmem_access(int page_number)
 
   if (proc->shmemvaddr[page_number]) {
     vaddr = proc->shmemvaddr[page_number];
-    if (mappages(proc->pgdir, vaddr, PGSIZE, PADDR(proc->shmemaddr[page_number]), PTE_W|PTE_U) < 0) {
-      cprintf("map shared memory failed!");
-      return NULL;
+    pte_t *pte = walkpgdir(proc->pgdir, vaddr, 0);
+    if (!(*pte & PTE_P)) {
+     if (mappages(proc->pgdir, vaddr, PGSIZE, PADDR(proc->shmemaddr[page_number]), PTE_W|PTE_U) < 0) {
+       cprintf("map shared memory failed!");
+       return NULL;
+     }
     }
     return proc->shmemvaddr[page_number];
   }
