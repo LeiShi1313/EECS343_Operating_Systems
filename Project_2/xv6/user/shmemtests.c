@@ -215,6 +215,22 @@ twoChildAccessPage12()
   }
 }
 
+void
+accessTwice()
+{
+  printf(1, "accessTwice...");
+
+
+  char* sharedPage = shmem_access(0);
+  char* sharedPage1 = shmem_access(0);
+  if (sharedPage != sharedPage1) {
+    testFailed();
+    expectedVersusActualNumeric("address", (int)sharedPage, (int)sharedPage1);
+  } else {
+    testPassed();
+  }
+}
+
 int
 main(void)
 {
@@ -278,5 +294,11 @@ main(void)
   }
   wait();
 
+  pid = fork();
+  if (pid == 0) {
+    accessTwice();
+    exit();
+  }
+  wait();
   exit();
 }
