@@ -175,6 +175,7 @@ exit(void)
   if(proc == initproc)
     panic("init exiting");
 
+  // TODO: what if thread exits, should files been close?
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
     if(proc->ofile[fd]){
@@ -182,7 +183,6 @@ exit(void)
       proc->ofile[fd] = 0;
     }
   }
-
   iput(proc->cwd);
   proc->cwd = 0;
 
@@ -191,6 +191,7 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
 
+  // TODO: what if thread's grandfather
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc){
@@ -219,7 +220,7 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != proc)
+      if(p->parent != proc || p->thread)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
@@ -503,3 +504,5 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   safestrcpy(thread->name, proc->name, sizeof(proc->name));
   return pid;
 }
+
+
