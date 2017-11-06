@@ -454,7 +454,8 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   struct proc *thread, *p;
 
   // Check if args are legal
-  // TODO
+  if ((uint)stack % PGSIZE != 0)
+    return -1;
   
   // Allocate process
   if ((thread = allocproc()) == 0)
@@ -493,6 +494,9 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   *((uint*)(stack + PGSIZE - sizeof(uint))) = (uint)arg;
   *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
   thread->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
+
+  // clone return 0
+  thread->tf->eax = 0;
 
   pid = thread->pid;
   thread->state = RUNNABLE;
