@@ -7,6 +7,7 @@ volatile int global = 1;
 
 void DoThreadWork(void* arg_ptr); // function signature for our DoThreadFunction
 void DoThreadWork2(void* arg_ptr); // function signature for our DoThreadFunction
+void DoThreadWork3(void* arg_ptr); // function signature for our DoThreadFunction
 
 int
 main(int argc, char* argv[])
@@ -24,7 +25,7 @@ main(int argc, char* argv[])
  while(global != 5) {
  ; // wait for child thread to finish
  }
- printf(1, "global: %d\n", global); // prints "global: 5"
+ printf(1, "Test 1 clone without arg, global: %d\n", global); // prints "global: 5"
 
  arg = malloc(sizeof(int) * 2);
  arg[0] = 1;
@@ -34,7 +35,14 @@ main(int argc, char* argv[])
  while(global != 3) {
  ; // wait for child thread to finish
  }
- printf(1, "global: %d\n", global); // prints "global: 5"
+ printf(1, "Test 2 clone with arg, global: %d\n", global);
+
+ 
+ clone_pid = clone(DoThreadWork3, arg, stack);
+ clone_pid += 0;
+ int ret_pid = join(clone_pid);
+ printf(1, "Test 3 join with arg, global: %d, pid: %d, cloned pid: %d\n", global, ret_pid, clone_pid);
+
  exit();
 }
 
@@ -47,6 +55,13 @@ DoThreadWork(void* arg_ptr) {
 }
 void
 DoThreadWork2(void* arg_ptr) {
+ // clone creates a new thread, which begins execution here
+ 
+ global = *((int*)arg_ptr) + *((int*)arg_ptr+1);
+ exit();
+}
+void
+DoThreadWork3(void* arg_ptr) {
  // clone creates a new thread, which begins execution here
  
  global = *((int*)arg_ptr) + *((int*)arg_ptr+1);

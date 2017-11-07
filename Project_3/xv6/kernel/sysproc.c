@@ -102,3 +102,12 @@ sys_clone(void)
     return -1;  
   return clone(fcn, arg, stack);
 }
+
+int
+sys_join(void)
+{
+  int pid;
+  if(argint(0, &pid) < 0)
+    return -1;
+  return join(pid);
+}

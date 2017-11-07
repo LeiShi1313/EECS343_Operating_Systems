@@ -17,7 +17,10 @@ USER_PROGS := \
 	usertests\
 	wc\
 	zombie\
-	threadtests
+	threadtests\
+	badclone\
+	clone\
+	join\
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 

@@ -453,9 +453,10 @@ clone(void(*fcn)(void*), void* arg, void* stack)
 {
   int i, pid;
   struct proc *thread, *p;
+  p = proc;
 
   // Check if args are legal
-  if ((uint)stack % PGSIZE != 0)
+  if ((uint)stack % PGSIZE != 0 || (uint)stack + PGSIZE > proc->sz)
     return -1;
   
   // Allocate process
@@ -505,4 +506,36 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   return pid;
 }
 
+int
+join(int pid)
+{
+  struct proc *p;
+  int havekids, retpid;
+  
+  acquire(&ptable.lock);
+  for (;;) {
+    havekids = 0;
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->parent != proc || p->thread == 0 || p->pid != pid)
+        continue;
+      havekids = 1;
+      if (p->state == ZOMBIE) {
+        retpid = p->pid;
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        release(&ptable.lock);
+        return retpid;
+      }
+    }
 
+    if (!havekids || proc->killed) {
+      release(&ptable.lock);
+      return -1;
+    }
+
+    sleep(proc, &ptable.lock);
+  }
+}
