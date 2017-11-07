@@ -3,8 +3,8 @@
 #include "param.h"
 #include "mmu.h"
 #include "x86.h"
-#include "proc.h"
 #include "spinlock.h"
+#include "proc.h"
 
 struct {
   struct spinlock lock;
@@ -68,6 +68,9 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // Init thread lock
+  initlock(&p->lock, "proc");
+
   return p;
 }
 
@@ -109,7 +112,12 @@ int
 growproc(int n)
 {
   uint sz;
-  
+  struct proc *p = proc->thread==0 ? proc: proc->parent;
+
+  if (p->thread)
+    panic("thread parent is still thread");
+
+  acquire(&p->lock);
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
@@ -120,6 +128,7 @@ growproc(int n)
   }
   proc->sz = sz;
   switchuvm(proc);
+  release(&p->lock);
   return 0;
 }
 
@@ -175,7 +184,6 @@ exit(void)
   if(proc == initproc)
     panic("init exiting");
 
-  // TODO: what if thread exits, should files been close?
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
     if(proc->ofile[fd]){
@@ -191,10 +199,9 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
 
-  // TODO: what if thread's grandfather
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == proc){
+    if(p->parent == proc && proc->thread == 0){
       p->parent = initproc;
       if(p->state == ZOMBIE)
         wakeup1(initproc);
@@ -494,7 +501,7 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   // Set ret stack
   // thread->ustack = stack;
   *((uint*)(stack + PGSIZE - sizeof(uint))) = (uint)arg;
-  *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
+  *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = (uint)exit;
   thread->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
 
   // clone return 0
@@ -511,6 +518,8 @@ join(int pid)
 {
   struct proc *p;
   int havekids, retpid;
+
+  cprintf("pid: %d\n", pid);
   
   acquire(&ptable.lock);
   for (;;) {

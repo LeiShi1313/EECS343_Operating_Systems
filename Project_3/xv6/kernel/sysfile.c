@@ -3,11 +3,12 @@
 #include "param.h"
 #include "stat.h"
 #include "mmu.h"
-#include "proc.h"
 #include "fs.h"
 #include "file.h"
 #include "fcntl.h"
 #include "sysfunc.h"
+#include "spinlock.h"
+#include "proc.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
