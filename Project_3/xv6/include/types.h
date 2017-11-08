@@ -16,15 +16,6 @@ typedef struct cond_t {
   uint locked;
 }cond_t;
 
-struct thread_obj {
-  void *a;
-  void *b;
-  void (*func)(void*);
-  void *c;
-  void *d;
-  void *arg;
-};
-
 #ifndef NULL
 #define NULL (0)
 #endif

@@ -44,14 +44,10 @@ void free(void*);
 int atoi(const char*);
 
 // uthreadlib.c
-// struct thread_obj {
-//   void *a;
-//   void *b;
-//   void (*func)(void*);
-//   void *c;
-//   void *d;
-//   void *arg;
-// };
+struct thread_obj {
+  void (*func)(void*);
+  void *arg;
+};
 // Thread wrappers
 void thread_wrapper(void *arg);
 int thread_create(void (*start_routine)(void*), void* arg);
