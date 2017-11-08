@@ -112,23 +112,36 @@ int
 growproc(int n)
 {
   uint sz;
-  struct proc *p = proc->thread==0 ? proc: proc->parent;
+  struct proc *p, *pp = proc->thread==0 ? proc: proc->parent;
 
-  if (p->thread)
+  if (pp->thread)
     panic("thread parent is still thread");
 
-  acquire(&p->lock);
+  acquire(&pp->lock);
   sz = proc->sz;
   if(n > 0){
-    if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
+    if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0) {
+      release(&ptable.lock);
+      release(&pp->lock);
       return -1;
+    }
   } else if(n < 0){
-    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0)
+    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0) {
+      release(&ptable.lock);
+      release(&pp->lock);
       return -1;
+    }
   }
   proc->sz = sz;
   switchuvm(proc);
-  release(&p->lock);
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pgdir == proc->pgdir){
+      p->sz = proc->sz;
+    }
+  }
+  release(&ptable.lock);
+  release(&pp->lock);
   return 0;
 }
 
@@ -201,10 +214,16 @@ exit(void)
 
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == proc && proc->thread == 0){
-      p->parent = initproc;
-      if(p->state == ZOMBIE)
-        wakeup1(initproc);
+    if (proc->thread == 0) {
+      if(p->parent == proc){
+        p->parent = initproc;
+        if(p->state == ZOMBIE)
+          wakeup1(initproc);
+      }
+    } else {
+      // find all sublings and try to wake up them
+      if (p->parent == proc->parent)
+        wakeup1(p);
     }
   }
 
@@ -461,6 +480,7 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   int i, pid;
   struct proc *thread, *p;
   p = proc;
+  cprintf("pid: %d, arg: 0x%x, stack: 0x%x\n", proc->pid, arg, stack);
 
   // Check if args are legal
   if ((uint)stack % PGSIZE != 0 || (uint)stack + PGSIZE > proc->sz)
@@ -471,7 +491,7 @@ clone(void(*fcn)(void*), void* arg, void* stack)
     return -1;
 
   // Copy states from parent
-  *thread->tf = *proc->tf;
+  *(thread->tf) = *(proc->tf);
   thread->sz = proc->sz;
   // TODO: thread->kstack?
 
@@ -500,8 +520,10 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   thread->tf->eip = (uint)fcn;
   // Set ret stack
   // thread->ustack = stack;
-  *((uint*)(stack + PGSIZE - sizeof(uint))) = (uint)arg;
-  *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = (uint)exit;
+  *((void**)(stack + PGSIZE - sizeof(uint))) = arg;
+  *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
+  thread->tf->esp = (uint)stack;
+  if (copyout(proc->pgdir, thread->tf->esp, (void*)stack, PGSIZE) < 0) return -1;
   thread->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
 
   // clone return 0
@@ -517,34 +539,38 @@ int
 join(int pid)
 {
   struct proc *p;
-  int havekids, retpid;
+  int found, retpid;
 
-  cprintf("pid: %d\n", pid);
+  cprintf("pid %d join for pid: %d\n", proc->pid, pid);
   
   acquire(&ptable.lock);
+  if (pid < 0) goto bad;
   for (;;) {
-    havekids = 0;
+    found = 0;
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-      if (p->parent != proc || p->thread == 0 || p->pid != pid)
-        continue;
-      havekids = 1;
-      if (p->state == ZOMBIE) {
-        retpid = p->pid;
-        p->state = UNUSED;
-        p->pid = 0;
-        p->parent = 0;
-        p->name[0] = 0;
-        p->killed = 0;
-        release(&ptable.lock);
-        return retpid;
+      if (p->pid == pid) {
+        if (p->thread == 0) goto bad;
+        if (p->pgdir != proc->pgdir) goto bad;
+
+        found = 1;
+        if (p->state == ZOMBIE) {
+          retpid = p->pid;
+          p->state = UNUSED;
+          p->pid = 0;
+          p->parent = 0;
+          p->name[0] = 0;
+          p->killed = 0;
+          release(&ptable.lock);
+          return retpid;
+        }
       }
     }
 
-    if (!havekids || proc->killed) {
-      release(&ptable.lock);
-      return -1;
-    }
+    if (!found || proc->killed) goto bad;
 
     sleep(proc, &ptable.lock);
   }
+bad:
+  release(&ptable.lock);
+  return -1;
 }
