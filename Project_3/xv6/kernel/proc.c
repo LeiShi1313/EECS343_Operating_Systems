@@ -493,6 +493,7 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   // Copy states from parent
   *(thread->tf) = *(proc->tf);
   thread->sz = proc->sz;
+  thread->ustack = stack;
   // TODO: thread->kstack?
 
   // Same address space
@@ -573,4 +574,23 @@ join(int pid)
 bad:
   release(&ptable.lock);
   return -1;
+}
+
+int
+getustack(int pid)
+{
+  struct proc *p;
+  int ret = -1;
+
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid) {
+      if (p->pgdir == proc->pgdir) {
+        ret = (int)p->ustack;
+      }
+      break;
+    }
+  }
+  release(&ptable.lock);
+  return ret;
 }
