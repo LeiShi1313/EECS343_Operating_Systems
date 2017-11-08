@@ -20,7 +20,18 @@ USER_PROGS := \
 	threadtests\
 	badclone\
 	clone\
+	clone2\
+	clone3\
 	join\
+	join2\
+	join3\
+	join4\
+	thread\
+	thread2\
+	thread3\
+	locks\
+	stack\
+	multi\
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 
@@ -29,7 +40,8 @@ USER_LIBS := \
 	ulib.o\
 	usys.o\
 	printf.o\
-	umalloc.o
+	umalloc.o\
+	uthreadlib.o\
 
 USER_LIBS := $(addprefix user/, $(USER_LIBS))
 

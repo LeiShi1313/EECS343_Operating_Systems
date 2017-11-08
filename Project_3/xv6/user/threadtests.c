@@ -144,14 +144,11 @@ ThreadSpawnThread(void* arg_ptr) {
     global--;
     if (global) {
         void *stack = malloc(PGSIZE*2);
-        printf(1, "Stack: %x\n", (uint)stack);
         if (stack == 0) exit();
         if ((uint)stack % PGSIZE) {
             stack = stack + (PGSIZE - (uint)stack % PGSIZE);
         }
-        printf(1, "Stack: %x\n", (uint)stack);
         int clone_pid = clone(ThreadSpawnThread, arg_ptr, stack);
-        printf(1, "Spawned pid: %d\n", clone_pid);
         *((int*) arg_ptr) += clone_pid;
         join(clone_pid);
         free(stack);

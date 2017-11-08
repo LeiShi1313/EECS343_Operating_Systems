@@ -121,13 +121,11 @@ growproc(int n)
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0) {
-      release(&ptable.lock);
       release(&pp->lock);
       return -1;
     }
   } else if(n < 0){
     if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0) {
-      release(&ptable.lock);
       release(&pp->lock);
       return -1;
     }
@@ -220,12 +218,13 @@ exit(void)
         if(p->state == ZOMBIE)
           wakeup1(initproc);
       }
-    } else {
-      // find all sublings and try to wake up them
-      if (p->parent == proc->parent)
+    } else{
+      if (p->pgdir == proc->pgdir) {
         wakeup1(p);
-    }
+      }
+    } 
   }
+  cprintf("%d exit\n", proc->pid);
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -479,6 +478,8 @@ clone(void(*fcn)(void*), void* arg, void* stack)
 {
   int i, pid;
   struct proc *thread, *p;
+  struct thread_obj *obj = arg;
+  cprintf("arg: 0x%x\n", obj->arg);
   p = proc;
   cprintf("pid: %d, arg: 0x%x, stack: 0x%x\n", proc->pid, arg, stack);
 
@@ -523,8 +524,6 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   // thread->ustack = stack;
   *((void**)(stack + PGSIZE - sizeof(uint))) = arg;
   *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
-  thread->tf->esp = (uint)stack;
-  if (copyout(proc->pgdir, thread->tf->esp, (void*)stack, PGSIZE) < 0) return -1;
   thread->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
 
   // clone return 0
@@ -533,6 +532,7 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   pid = thread->pid;
   thread->state = RUNNABLE;
   safestrcpy(thread->name, proc->name, sizeof(proc->name));
+  cprintf("arg: 0x%x\n", obj->arg);
   return pid;
 }
 
