@@ -125,18 +125,21 @@ sys_getustack(void)
 int
 sys_csleep(void)
 {
-  void *cond;
-  if (argptr(0, (char**)&cond, sizeof(void*)) < 0)
+  cond_t *cond;
+  lock_t *lock;
+  if (argptr(0, (char**)&cond, sizeof(cond_t*)) < 0)
     return -1;
-  csleep(cond);
+  if (argptr(1, (char**)&lock, sizeof(lock_t*)) < 0)
+    return -1;
+  csleep(cond, lock);
   return 0;
 }
 
 int
 sys_cwake(void)
 {
-  void *cond;
-  if (argptr(0, (char**)&cond, sizeof(void*)) < 0)
+  cond_t *cond;
+  if (argptr(0, (char**)&cond, sizeof(cond_t*)) < 0)
     return -1;
   cwake(cond);
   return 0;

@@ -62,6 +62,18 @@ release(struct spinlock *lk)
   popcli();
 }
 
+void
+acquire_lock_t(lock_t* lock)
+{
+  while(xchg(&lock->locked, 1) != 0) ;
+}
+
+void
+release_lock_t(lock_t* lock)
+{
+  xchg(&lock->locked, 0);
+}
+
 // Record the current call stack in pcs[] by following the %ebp chain.
 void
 getcallerpcs(void *v, uint pcs[])

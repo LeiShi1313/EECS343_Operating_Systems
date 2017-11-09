@@ -28,8 +28,8 @@ int uptime(void);
 int clone(void(*fcn)(void*), void* arg, void* stack);
 int join(int pid);
 int getustack(int pid);
-void csleep(void *cond);
-void cwake(void *cond);
+void csleep(cond_t *cond, lock_t *lock);
+void cwake(cond_t *cond);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
@@ -56,15 +56,10 @@ int thread_create(void (*start_routine)(void*), void* arg);
 int thread_join(int pid);
 
 // Locks
-typedef struct lock_t {
-  uint locked;
-}lock_t;
-
-typedef uint cond_t;
-
 void lock_acquire(lock_t* lock);
 void lock_release(lock_t* lock);
 void lock_init(lock_t* lock);
+int holding(lock_t* lock);
 
 // Condition variables
 void cv_wait(cond_t* conditionVariable, lock_t* lock);

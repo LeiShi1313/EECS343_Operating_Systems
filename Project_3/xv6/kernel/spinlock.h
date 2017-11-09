@@ -12,4 +12,7 @@ struct spinlock {
                      // that locked the lock.
 };
 
+void acquire_lock_t(lock_t* lock);
+void release_lock_t(lock_t* lock);
+
 #endif // _SPINLOCK_H_

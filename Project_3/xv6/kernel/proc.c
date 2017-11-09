@@ -214,9 +214,31 @@ exit(void)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (proc->thread == 0) {
       if(p->parent == proc){
-        p->parent = initproc;
-        if(p->state == ZOMBIE)
-          wakeup1(initproc);
+        if (p->thread) {
+          // cprintf("found child %d\n", p->pid);
+          p->state = UNUSED;
+          kfree(p->kstack);
+          p->kstack = 0;
+          p->pid = 0;
+          p->sz = 0;
+          p->pgdir = 0;
+          p->thread = 0;
+          p->parent = 0;
+          p->name[0] = 0;
+          p->killed = 0;
+          for(fd = 0; fd < NOFILE; fd++){
+            if(p->ofile[fd]){
+              fileclose(p->ofile[fd]);
+              p->ofile[fd] = 0;
+            }
+          }
+          iput(p->cwd);
+          p->cwd = 0;
+        } else {
+          p->parent = initproc;
+          if(p->state == ZOMBIE)
+            wakeup1(initproc);
+        }
       }
     } else{
       if (p->pgdir == proc->pgdir) {
@@ -402,6 +424,7 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan) {
+      // cprintf("%d, ", p->pid);
       p->state = RUNNABLE;
     }
 }
@@ -554,6 +577,8 @@ join(int pid)
         found = 1;
         if (p->state == ZOMBIE) {
           retpid = p->pid;
+          kfree(p->kstack);
+          p->kstack = 0;
           p->state = UNUSED;
           p->pid = 0;
           p->parent = 0;
@@ -594,21 +619,27 @@ getustack(int pid)
 }
 
 void
-csleep(void *cond)
+csleep(cond_t *cond, lock_t* lock)
 {
   // cprintf("proc %d sleep on 0x%x\n", proc->pid, cond);
   acquire(&ptable.lock);
+  // cprintf("lock: %p %d\n", lock, lock->locked);
+  release_lock_t(lock);
+  // cprintf("lock: %p %d\n", lock, lock->locked);
+  // cprintf("proc %d sleep on %p\n", proc->pid, cond);
   sleep(cond, &ptable.lock);
   // cprintf("proc %d wake\n", proc->pid);
   release(&ptable.lock);
+  acquire_lock_t(lock);
 }
 
 void
-cwake(void *cond)
+cwake(cond_t *cond)
 {
   // struct proc *p;
-  // cprintf("proc %d wake on 0x%x\n", proc->pid, cond);
   acquire(&ptable.lock);
+  // cprintf("proc %d waked ", proc->pid);
   wakeup1(cond);
+  // cprintf("on %p\n", cond);
   release(&ptable.lock);
 }

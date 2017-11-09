@@ -17,27 +17,8 @@ USER_PROGS := \
 	usertests\
 	wc\
 	zombie\
-	threadtests\
-	badclone\
-	clone\
-	clone2\
-	clone3\
-	join\
-	join2\
-	join3\
-	join4\
-	thread\
-	thread2\
-	thread3\
-	locks\
-	stack\
-	multi\
-	noexit\
-	size\
-	race\
-	cond\
-	cond2\
-	cond3\
+	mytests\
+	pexit\
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 
