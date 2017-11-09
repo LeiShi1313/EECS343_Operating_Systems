@@ -75,7 +75,8 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int thread;                  // If non-zero, proc is a thread
-  struct spinlock lock;       // thread lock
+  void *ustack;                // user stack
+  struct spinlock lock;        // thread lock
 };
 
 // Process memory is laid out contiguously, low addresses first:

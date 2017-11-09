@@ -121,13 +121,11 @@ growproc(int n)
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0) {
-      release(&ptable.lock);
       release(&pp->lock);
       return -1;
     }
   } else if(n < 0){
     if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0) {
-      release(&ptable.lock);
       release(&pp->lock);
       return -1;
     }
@@ -216,16 +214,39 @@ exit(void)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (proc->thread == 0) {
       if(p->parent == proc){
-        p->parent = initproc;
-        if(p->state == ZOMBIE)
-          wakeup1(initproc);
+        if (p->thread) {
+          // cprintf("found child %d\n", p->pid);
+          p->state = UNUSED;
+          kfree(p->kstack);
+          p->kstack = 0;
+          p->pid = 0;
+          p->sz = 0;
+          p->pgdir = 0;
+          p->thread = 0;
+          p->parent = 0;
+          p->name[0] = 0;
+          p->killed = 0;
+          for(fd = 0; fd < NOFILE; fd++){
+            if(p->ofile[fd]){
+              fileclose(p->ofile[fd]);
+              p->ofile[fd] = 0;
+            }
+          }
+          iput(p->cwd);
+          p->cwd = 0;
+        } else {
+          p->parent = initproc;
+          if(p->state == ZOMBIE)
+            wakeup1(initproc);
+        }
       }
-    } else {
-      // find all sublings and try to wake up them
-      if (p->parent == proc->parent)
+    } else{
+      if (p->pgdir == proc->pgdir) {
         wakeup1(p);
-    }
+      }
+    } 
   }
+  // cprintf("%d exit\n", proc->pid);
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -402,8 +423,10 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan) {
+      // cprintf("%d, ", p->pid);
       p->state = RUNNABLE;
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -480,7 +503,7 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   int i, pid;
   struct proc *thread, *p;
   p = proc;
-  cprintf("pid: %d, arg: 0x%x, stack: 0x%x\n", proc->pid, arg, stack);
+  // cprintf("pid: %d, arg: 0x%x, stack: 0x%x\n", proc->pid, arg, stack);
 
   // Check if args are legal
   if ((uint)stack % PGSIZE != 0 || (uint)stack + PGSIZE > proc->sz)
@@ -493,6 +516,7 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   // Copy states from parent
   *(thread->tf) = *(proc->tf);
   thread->sz = proc->sz;
+  thread->ustack = stack;
   // TODO: thread->kstack?
 
   // Same address space
@@ -522,8 +546,6 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   // thread->ustack = stack;
   *((void**)(stack + PGSIZE - sizeof(uint))) = arg;
   *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
-  thread->tf->esp = (uint)stack;
-  if (copyout(proc->pgdir, thread->tf->esp, (void*)stack, PGSIZE) < 0) return -1;
   thread->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
 
   // clone return 0
@@ -541,7 +563,7 @@ join(int pid)
   struct proc *p;
   int found, retpid;
 
-  cprintf("pid %d join for pid: %d\n", proc->pid, pid);
+  // cprintf("pid %d join for pid: %d\n", proc->pid, pid);
   
   acquire(&ptable.lock);
   if (pid < 0) goto bad;
@@ -555,6 +577,8 @@ join(int pid)
         found = 1;
         if (p->state == ZOMBIE) {
           retpid = p->pid;
+          kfree(p->kstack);
+          p->kstack = 0;
           p->state = UNUSED;
           p->pid = 0;
           p->parent = 0;
@@ -573,4 +597,49 @@ join(int pid)
 bad:
   release(&ptable.lock);
   return -1;
+}
+
+int
+getustack(int pid)
+{
+  struct proc *p;
+  int ret = -1;
+
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid) {
+      if (p->pgdir == proc->pgdir) {
+        ret = (int)p->ustack;
+      }
+      break;
+    }
+  }
+  release(&ptable.lock);
+  return ret;
+}
+
+void
+csleep(cond_t *cond, lock_t* lock)
+{
+  // cprintf("proc %d sleep on 0x%x\n", proc->pid, cond);
+  acquire(&ptable.lock);
+  // cprintf("lock: %p %d\n", lock, lock->locked);
+  release_lock_t(lock);
+  // cprintf("lock: %p %d\n", lock, lock->locked);
+  // cprintf("proc %d sleep on %p\n", proc->pid, cond);
+  sleep(cond, &ptable.lock);
+  // cprintf("proc %d wake\n", proc->pid);
+  release(&ptable.lock);
+  acquire_lock_t(lock);
+}
+
+void
+cwake(cond_t *cond)
+{
+  // struct proc *p;
+  acquire(&ptable.lock);
+  // cprintf("proc %d waked ", proc->pid);
+  wakeup1(cond);
+  // cprintf("on %p\n", cond);
+  release(&ptable.lock);
 }

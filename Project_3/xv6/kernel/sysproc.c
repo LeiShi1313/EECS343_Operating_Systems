@@ -112,3 +112,36 @@ sys_join(void)
     return -1;
   return join(pid);
 }
+
+int
+sys_getustack(void)
+{
+  int pid;
+  if (argint(0, &pid) < 0)
+    return -1;
+  return getustack(pid);
+}
+
+int
+sys_csleep(void)
+{
+  cond_t *cond;
+  lock_t *lock;
+  if (argptr(0, (char**)&cond, sizeof(cond_t*)) < 0)
+    return -1;
+  if (argptr(1, (char**)&lock, sizeof(lock_t*)) < 0)
+    return -1;
+  csleep(cond, lock);
+  return 0;
+}
+
+int
+sys_cwake(void)
+{
+  cond_t *cond;
+  if (argptr(0, (char**)&cond, sizeof(cond_t*)) < 0)
+    return -1;
+  cwake(cond);
+  return 0;
+}
+  

@@ -27,6 +27,9 @@ int sleep(int);
 int uptime(void);
 int clone(void(*fcn)(void*), void* arg, void* stack);
 int join(int pid);
+int getustack(int pid);
+void csleep(cond_t *cond, lock_t *lock);
+void cwake(cond_t *cond);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
@@ -41,6 +44,27 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
+// uthreadlib.c
+struct thread_obj {
+  void (*func)(void*);
+  void *arg;
+};
+// Thread wrappers
+void thread_wrapper(void *arg);
+int thread_create(void (*start_routine)(void*), void* arg);
+int thread_join(int pid);
+
+// Locks
+void lock_acquire(lock_t* lock);
+void lock_release(lock_t* lock);
+void lock_init(lock_t* lock);
+int holding(lock_t* lock);
+
+// Condition variables
+void cv_wait(cond_t* conditionVariable, lock_t* lock);
+void cv_signal(cond_t* conditionVariable);
+
 
 #endif // _USER_H_
 
