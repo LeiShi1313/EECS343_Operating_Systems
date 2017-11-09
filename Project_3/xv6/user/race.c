@@ -1,6 +1,7 @@
 /* race condition in CV? (must atomically release lock and sleep) */
 #include "types.h"
 #include "user.h"
+#include "x86.h"
 
 #undef NULL
 #define NULL ((void*)0)
@@ -29,7 +30,18 @@ void consume(void *arg);
 int
 main(int argc, char *argv[])
 {
-  int i = 0;
+  unsigned int i = 0;
+  printf(1, "0->0: %d, ", xchg(&i, 0));
+  printf(1, "i: %d\n", i);
+  i = 0;
+  printf(1, "0->1: %d ", xchg(&i, 1), i);
+  printf(1, "i: %d\n", i);
+  i = 1;
+  printf(1, "1->1: %d ", xchg(&i, 1), i);
+  printf(1, "i: %d\n", i);
+  i = 1;
+  printf(1, "1->0: %d ", xchg(&i, 0), i);
+  printf(1, "i: %d\n", i);
   ppid = getpid();
 
   lock_init(&lock);
@@ -38,9 +50,10 @@ main(int argc, char *argv[])
   assert((pid1 = thread_create(produce, NULL)) > 0);
   assert((pid2 = thread_create(consume, NULL)) > 0);
 
-  i += 0;
-  thread_join(pid1);
-  thread_join(pid2);
+  for (i = 0; i < 500; i++) {
+    result <<= 1;
+    result |= 1;
+  }
 
   printf(1, "%p\n", result);
   if(result & 0x3ff)
@@ -54,6 +67,7 @@ produce(void *arg) {
     lock_acquire(&lock);
     printf(1, "produce buff: %d\n", bufsize);
     while(bufsize == N) {
+      printf(1, "produce nonfull: %d\n", nonfull);
       cv_wait(&nonfull, &lock);
     }
 
@@ -72,6 +86,7 @@ consume(void *arg) {
     lock_acquire(&lock);
     printf(1, "consume buff: %d\n", bufsize);
     while(bufsize == 0) {
+      printf(1, "consume nonempty: %d\n", nonempty);
       cv_wait(&nonempty, &lock);
     }
 

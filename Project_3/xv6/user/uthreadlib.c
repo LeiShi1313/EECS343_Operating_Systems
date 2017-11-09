@@ -68,19 +68,22 @@ lock_release(lock_t* lock)
 void 
 cv_wait(cond_t* conditionVariable, lock_t* lock)
 {
+  xchg(conditionVariable, 0);
   while(xchg(conditionVariable, 0) == 0) {
-    printf(1, "wait on 0x%x----%d, lock: %d\n", conditionVariable, *conditionVariable, lock->locked);
+    // printf(1, "wait on 0x%x----%d, lock: %d\n", conditionVariable, *conditionVariable, lock->locked);
     lock_release(lock);
     csleep(conditionVariable);
   }
-  printf(1, "end wait\n");
+  // printf(1, "end wait\n");
   lock_acquire(lock);
 }
 
 void 
 cv_signal(cond_t* conditionVariable)
 {
-  printf(1, "wake on 0x%x----%d\n", conditionVariable, *conditionVariable);
-  cwake(conditionVariable);
+  // printf(1, "wake on 0x%x----%d\n", conditionVariable, *conditionVariable);
   xchg(conditionVariable, 1);
+  // printf(1, "wake now 0x%x----%d\n", conditionVariable, *conditionVariable);
+  cwake(conditionVariable);
+  // printf(1, "wake now 0x%x----%d\n", conditionVariable, *conditionVariable);
 }
