@@ -32,6 +32,9 @@ USER_PROGS := \
 	locks\
 	stack\
 	multi\
+	noexit\
+	size\
+	race\
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 

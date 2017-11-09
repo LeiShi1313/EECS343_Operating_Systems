@@ -26,5 +26,7 @@ int sys_uptime(void);
 int sys_clone(void);
 int sys_join(void);
 int sys_getustack(void);
+int sys_csleep(void);
+int sys_cwake(void);
 
 #endif // _SYSFUNC_H_

@@ -401,8 +401,10 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan) {
+      cprintf("pid %d wake because of 0x%x\n", p->pid, chan);
       p->state = RUNNABLE;
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -478,8 +480,6 @@ clone(void(*fcn)(void*), void* arg, void* stack)
 {
   int i, pid;
   struct proc *thread, *p;
-  struct thread_obj *obj = arg;
-  cprintf("arg: 0x%x\n", obj->arg);
   p = proc;
   cprintf("pid: %d, arg: 0x%x, stack: 0x%x\n", proc->pid, arg, stack);
 
@@ -532,7 +532,6 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   pid = thread->pid;
   thread->state = RUNNABLE;
   safestrcpy(thread->name, proc->name, sizeof(proc->name));
-  cprintf("arg: 0x%x\n", obj->arg);
   return pid;
 }
 
@@ -593,4 +592,24 @@ getustack(int pid)
   }
   release(&ptable.lock);
   return ret;
+}
+
+void
+csleep(void *cond)
+{
+  cprintf("proc %d sleep on 0x%x\n", proc->pid, cond);
+  acquire(&ptable.lock);
+  sleep(cond, &ptable.lock);
+  cprintf("proc %d wake\n", proc->pid);
+  release(&ptable.lock);
+}
+
+void
+cwake(void *cond)
+{
+  // struct proc *p;
+  cprintf("proc %d wake on 0x%x\n", proc->pid, cond);
+  acquire(&ptable.lock);
+  wakeup1(cond);
+  release(&ptable.lock);
 }

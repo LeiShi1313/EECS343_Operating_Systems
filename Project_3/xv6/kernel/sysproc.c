@@ -121,3 +121,24 @@ sys_getustack(void)
     return -1;
   return getustack(pid);
 }
+
+int
+sys_csleep(void)
+{
+  void *cond;
+  if (argptr(0, (char**)&cond, sizeof(void*)) < 0)
+    return -1;
+  csleep(cond);
+  return 0;
+}
+
+int
+sys_cwake(void)
+{
+  void *cond;
+  if (argptr(0, (char**)&cond, sizeof(void*)) < 0)
+    return -1;
+  cwake(cond);
+  return 0;
+}
+  

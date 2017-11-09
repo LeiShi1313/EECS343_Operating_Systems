@@ -29,7 +29,7 @@ void consume(void *arg);
 int
 main(int argc, char *argv[])
 {
-  int i;
+  int i = 0;
   ppid = getpid();
 
   lock_init(&lock);
@@ -38,10 +38,9 @@ main(int argc, char *argv[])
   assert((pid1 = thread_create(produce, NULL)) > 0);
   assert((pid2 = thread_create(consume, NULL)) > 0);
 
-  for(i = 0; i < 500; i++) {
-    result <<= 1;
-    sleep(1);
-  }
+  i += 0;
+  thread_join(pid1);
+  thread_join(pid2);
 
   printf(1, "%p\n", result);
   if(result & 0x3ff)
@@ -53,8 +52,10 @@ void
 produce(void *arg) {
   while(1) {
     lock_acquire(&lock);
-    while(bufsize == N)
+    printf(1, "produce buff: %d\n", bufsize);
+    while(bufsize == N) {
       cv_wait(&nonfull, &lock);
+    }
 
     result <<= 1;
     result |= 1;
@@ -69,8 +70,10 @@ void
 consume(void *arg) {
   while(1) {
     lock_acquire(&lock);
-    while(bufsize == 0)
+    printf(1, "consume buff: %d\n", bufsize);
+    while(bufsize == 0) {
       cv_wait(&nonempty, &lock);
+    }
 
     result <<= 1;
     result |= 1;

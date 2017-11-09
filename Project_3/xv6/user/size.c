@@ -37,11 +37,12 @@ main(int argc, char *argv[])
    lock_acquire(&lock);
    lock_acquire(&lock2);
 
-   // int i;
-   // for (i = 0; i < num_threads; i++) {
-      int thread_pid = thread_create(worker, arg_ptr);
-      assert(thread_pid > 0);
-   // }
+   int i;
+   int thread_pid;
+   for (i = 0; i < num_threads; i++) {
+     thread_pid = thread_create(worker, arg_ptr);
+     assert(thread_pid > 0);
+   }
 
    size = (unsigned int)sbrk(0);
 

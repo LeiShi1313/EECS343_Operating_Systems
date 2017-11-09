@@ -40,16 +40,11 @@ main(int argc, char *argv[])
    assert(fib(28) == 317811);
 
    int arg = 101;
-   void *arg_ptr = &arg;
 
-   printf(1, "arg addr: 0x%x\n", arg_ptr);
    int i;
    for (i = 0; i < num_threads; i++) {
-      int thread_pid = thread_create(worker, arg_ptr);
+      int thread_pid = thread_create(worker, &arg);
       assert(thread_pid > 0);
-   // }
-
-   // for (i = 0; i < num_threads; i++) {
       int join_pid = thread_join(thread_pid);
       assert(join_pid > 0);
    }
@@ -61,8 +56,6 @@ main(int argc, char *argv[])
 void
 worker(void *arg_ptr) {
    int arg = *(int*)arg_ptr;
-   printf(1, "worker---arg addr: 0x%x\n", arg_ptr);
-   printf(1, "worker---int addr: 0x%x\n", &arg);
    assert(arg == 101);
    assert(global == 1);
    assert(fib(2) == 1);

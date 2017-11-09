@@ -4,12 +4,14 @@
 #define PGSIZE (4096)
 
 volatile int global = 1;
+lock_t lock;
 
 void ThreadWithoutArg(void* arg_ptr); 
 void ThreadWithArg(void* arg_ptr);
 void ThreadDontExit(void* arg_ptr);
 void ThreadIncre(void* arg_ptr);
 void ThreadSpawnThread(void* arg_ptr);
+void ThreadRelease(void *arg_ptr);
 
 void 
 getStack(void **stack) {
@@ -116,6 +118,14 @@ main(int argc, char* argv[])
     printf(1, "Test 6 thread spawn thread, global: %d, arg: %d\n", global, *arg); 
 
 
+    printf(1, "Test 7 start************************\n"); 
+    lock_init(&lock);
+    lock_acquire(&lock);
+    global = 1;
+    clone_pid = thread_create(ThreadRelease, NULL);
+    ret_pid = thread_join(clone_pid);
+    lock_release(&lock);
+    printf(1, "Test 7 thread spawn thread, global: %d, arg: %d\n", global, *arg); 
 
     exit();
 }
@@ -154,4 +164,12 @@ ThreadSpawnThread(void* arg_ptr) {
         free(stack);
     }
     exit();
+}
+
+void
+ThreadRelease(void* arg_ptr)
+{
+  lock_release(&lock);
+  lock_acquire(&lock);
+  global = 2;
 }

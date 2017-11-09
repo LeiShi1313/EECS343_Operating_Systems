@@ -26,5 +26,7 @@
 #define SYS_clone  22
 #define SYS_join   23
 #define SYS_getustack 24
+#define SYS_csleep 25
+#define SYS_cwake  26
 
 #endif // _SYSCALL_H_
