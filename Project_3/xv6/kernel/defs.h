@@ -114,6 +114,7 @@ int             join(int pid);
 int             getustack(int pid);
 void            csleep(cond_t *cond, lock_t *lock);
 void            cwake(cond_t *cond);
+void            cleanthread(struct proc*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

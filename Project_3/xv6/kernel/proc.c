@@ -183,6 +183,34 @@ fork(void)
   return pid;
 }
 
+void
+cleanthread(struct proc* p)
+{
+  int fd;
+  p->state = UNUSED;
+  p->pgdir = 0;
+  p->tf = 0;
+  p->ustack = 0;
+  kfree(p->kstack);
+  p->kstack = 0;
+  p->pid = 0;
+  p->sz = 0;
+  p->chan = 0;
+  p->pgdir = 0;
+  p->thread = 0;
+  p->parent = 0;
+  p->name[0] = 0;
+  p->killed = 0;
+  for(fd = 0; fd < NOFILE; fd++){
+    if(p->ofile[fd]){
+      fileclose(p->ofile[fd]);
+      p->ofile[fd] = 0;
+    }
+  }
+  iput(p->cwd);
+  p->cwd = 0;
+}
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
@@ -192,6 +220,7 @@ exit(void)
   struct proc *p;
   int fd;
 
+  // cprintf("p %d exiting\n", proc->pid);
   if(proc == initproc)
     panic("init exiting");
 
@@ -215,25 +244,9 @@ exit(void)
     if (proc->thread == 0) {
       if(p->parent == proc){
         if (p->thread) {
-          // cprintf("found child %d\n", p->pid);
-          p->state = UNUSED;
-          kfree(p->kstack);
-          p->kstack = 0;
-          p->pid = 0;
-          p->sz = 0;
-          p->pgdir = 0;
-          p->thread = 0;
-          p->parent = 0;
-          p->name[0] = 0;
-          p->killed = 0;
-          for(fd = 0; fd < NOFILE; fd++){
-            if(p->ofile[fd]){
-              fileclose(p->ofile[fd]);
-              p->ofile[fd] = 0;
-            }
-          }
-          iput(p->cwd);
-          p->cwd = 0;
+          // cprintf("child %d eip %p\n", p->pid, p->context->eip);
+        //   cprintf("found child %d\n", p->pid);
+          cleanthread(p);
         } else {
           p->parent = initproc;
           if(p->state == ZOMBIE)
@@ -421,10 +434,8 @@ static void
 wakeup1(void *chan)
 {
   struct proc *p;
-
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan) {
-      // cprintf("%d, ", p->pid);
       p->state = RUNNABLE;
     }
 }
@@ -543,10 +554,12 @@ clone(void(*fcn)(void*), void* arg, void* stack)
   // Set up ret function
   thread->tf->eip = (uint)fcn;
   // Set ret stack
-  // thread->ustack = stack;
   *((void**)(stack + PGSIZE - sizeof(uint))) = arg;
   *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
+  thread->tf->esp = (uint)stack;
+  copyout(thread->pgdir, thread->tf->esp, stack, PGSIZE);
   thread->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
+  thread->tf->ebp = thread->tf->esp;
 
   // clone return 0
   thread->tf->eax = 0;

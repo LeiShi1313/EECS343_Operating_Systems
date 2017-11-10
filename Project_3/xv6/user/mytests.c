@@ -41,6 +41,7 @@ void join4_worker(void *arg_ptr);
 void thread_worker(void *arg_ptr);
 void thread2_worker(void *arg_ptr);
 void thread3_worker(void *arg_ptr);
+void pexit_worker(void *arg_ptr);
 void noexit_worker(void *arg_ptr);
 void stack_worker(void *arg_ptr);
 void size_worker(void *arg_ptr);
@@ -307,6 +308,23 @@ main(int argc, char *argv[])
         join_pid = thread_join(thread_pid);
         assert(join_pid == thread_pid);
 
+        printf(1, "TEST PASSED\n");
+        exit();
+    }
+    wait();
+
+
+    pid = fork();
+    if (pid == 0) {
+        printf(1, "test pexit ");
+        pid = fork();
+        if (pid == 0) {
+            assert(thread_create(pexit_worker, NULL) > 0);
+            sleep(5);
+            exit();
+        }
+        wait();
+        assert(thread_join(pid+1) == -1);
         printf(1, "TEST PASSED\n");
         exit();
     }
@@ -635,6 +653,11 @@ thread2_worker(void *arg_ptr) {
 void
 thread3_worker(void *arg_ptr) {
     exit();
+}
+void
+pexit_worker(void *arg_ptr) {
+    while (1)
+        sleep(1);
 }
 void
 noexit_worker(void *arg_ptr) {
