@@ -18,7 +18,6 @@ USER_PROGS := \
 	wc\
 	zombie\
 	mytests\
-	pexit\
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 
