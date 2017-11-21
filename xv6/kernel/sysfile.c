@@ -405,3 +405,17 @@ sys_tagFile(void)
   if (argint(3, &valueLength) < 0) return -1;
   return tagFile(fileDescriptor, key, value, valueLength);
 }
+
+int
+sys_getFileTag(void)
+{
+  int fileDescriptor;
+  char* key;
+  char* buffer;
+  int length;
+  if (argint(0, &fileDescriptor) < 0) return -1;
+  if (argstr(1, &key) < 0) return -1;
+  if (argstr(2, &buffer) < 0) return -1;
+  if (argint(3, &length) < 0) return -1;
+  return getFileTag(fileDescriptor, key, buffer, length);
+}

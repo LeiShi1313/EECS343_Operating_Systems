@@ -644,7 +644,9 @@ tagFile(int fileDescriptor, char* key, char* value, int valueLength)
   }
 
   //TO-DO: update key pos
+  memset(keypos->key, '\0', 10);
   strncpy(keypos->key, key, keysize);
+  memset(keypos->value, '\0', 18);
   strncpy(keypos->value, value, valueLength);
   strncpy(keypos->used, "used", 4);
   
@@ -684,3 +686,30 @@ searchNew(uchar* bufdata)
   return NULL;
 }
 
+int 
+getFileTag(int fileDescriptor, char* key, char* buffer, int length)
+{
+  uchar* bufdata;
+  struct Tag *keypos;
+  struct file *f;
+  int valuelength;
+  struct buf *bp;
+
+  f = proc->ofile[fileDescriptor];
+  if(f == NULL || !f->readable) return -1;
+  
+  ilock(f->ip);
+  bp = bread(f->ip->dev, f->ip->tags);
+  bufdata = (uchar*)bp->data;
+  keypos = searchKey(key, bufdata);
+  if(keypos == NULL){
+    return -1;
+  }
+  strncpy(buffer, keypos->value, length);
+  valuelength = strlen(keypos->value);
+  
+  brelse(bp);
+  iunlock(f->ip);
+  return valuelength;
+
+}
