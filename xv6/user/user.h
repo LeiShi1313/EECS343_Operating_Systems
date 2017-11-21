@@ -27,6 +27,7 @@ int sleep(int);
 int uptime(void);
 int tagFile(int fileDescriptor, char* key, char* value, int valueLength);
 int getFileTag(int fileDescriptor, char* key, char* buffer, int length);
+int removeFileTag(int fileDescriptor, char* key);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);

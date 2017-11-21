@@ -687,6 +687,39 @@ searchNew(uchar* bufdata)
 }
 
 int 
+removeFileTag(int fileDescriptor, char* key)
+{
+  struct file *f;
+  struct buf *bp;
+  uchar *bufdata;
+  struct Tag *keypos;
+
+  f = proc->ofile[fileDescriptor];
+  if(f == NULL || !f->writable) return -1;
+
+  ilock(f->ip);
+  bp = bread(f->ip->dev, f->ip->tags);
+  bufdata = (uchar*)bp->data;
+
+  keypos = searchKey(key, bufdata);
+  if(keypos == NULL){
+    return -1;
+  }
+
+  memset(keypos->key, '\0', 10);
+  memset(keypos->value, '\0', 18);
+  memset(keypos->used, '\0', 4);
+  
+  bwrite(bp);
+  brelse(bp);
+  iunlock(f->ip);
+
+  return 1;
+
+
+}
+
+int 
 getFileTag(int fileDescriptor, char* key, char* buffer, int length)
 {
   uchar* bufdata;
