@@ -678,7 +678,7 @@ searchNew(uchar* bufdata)
   struct Tag* curr;
   int i = 0;
   for(curr = (struct Tag*)bufdata; i < 16; curr ++){
-    if(strncmp(curr->used, "used", 4) == 0){
+    if(strncmp(curr->used, "used", 4) != 0){
       return curr;
     }
     i++;
