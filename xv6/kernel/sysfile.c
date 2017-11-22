@@ -430,3 +430,18 @@ sys_removeFileTag(void)
   if (argstr(1, &key) < 0) return -1;
   return removeFileTag(fileDescriptor, key);
 }
+
+int
+sys_getAllTags(void)
+{
+  int fileDescriptor;
+  struct Key *keys;
+  int maxTags;
+
+  if (argint(0, &fileDescriptor) < 0) return -1;
+  if (argint(2, &maxTags) < 0) return -1;
+  if (argptr(1, (char**)&keys, sizeof(struct Key)* maxTags) < 0) return -1;
+  
+
+  return getAllTags(fileDescriptor, keys, maxTags);
+}

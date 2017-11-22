@@ -32,6 +32,7 @@ struct inode {
   uint size;
   uint addrs[NDIRECT+1];
   uint tags;
+  uint numberoftags;
 };
 
 #define I_BUSY 0x1

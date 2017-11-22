@@ -56,6 +56,7 @@ struct Tag*		searchKey(char* key, uchar* bufdata);
 struct Tag*		searchNew(uchar* bufdata);
 int 			getFileTag(int fileDescriptor, char* key, char* buffer, int length);
 int 			removeFileTag(int fileDescriptor, char* key);
+int 			getAllTags(int fileDescriptor, struct Key keys[], int maxTags);
 
 // ide.c
 void            ideinit(void);

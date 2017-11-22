@@ -649,6 +649,7 @@ tagFile(int fileDescriptor, char* key, char* value, int valueLength)
   memset(keypos->value, '\0', 18);
   strncpy(keypos->value, value, valueLength);
   strncpy(keypos->used, "used", 4);
+  f->ip->numberoftags++;
   
   bwrite(bp);
   brelse(bp);
@@ -709,6 +710,7 @@ removeFileTag(int fileDescriptor, char* key)
   memset(keypos->key, '\0', 10);
   memset(keypos->value, '\0', 18);
   memset(keypos->used, '\0', 4);
+  f->ip->numberoftags--;
   
   bwrite(bp);
   brelse(bp);
@@ -744,5 +746,37 @@ getFileTag(int fileDescriptor, char* key, char* buffer, int length)
   brelse(bp);
   iunlock(f->ip);
   return valuelength;
+
+}
+
+int getAllTags(int fileDescriptor, struct Key keys[], int maxTags){
+  struct file *f;
+  struct buf *bp;
+  uchar *bufdata;
+
+  f = proc->ofile[fileDescriptor];
+  if(f == NULL || !f->readable) return -1;
+
+  ilock(f->ip);
+  bp = bread(f->ip->dev, f->ip->tags);
+  bufdata = (uchar*)bp->data;
+
+  struct Tag* curr;
+  int i = 0;
+  int count = 0;
+
+  for(curr = (struct Tag*)bufdata; i < 16; curr ++){
+    if(count == maxTags) break;
+    if(strncmp(curr->used, "used", 4) == 0){
+      strncpy(keys[count].key, curr->key, strlen(curr->key));
+      count++;
+    }
+    i++;
+  }
+
+  brelse(bp);
+  iunlock(f->ip);
+
+  return f->ip->numberoftags;
 
 }

@@ -2,6 +2,9 @@
 #define _TYPES_H_
 
 // Type definitions
+struct Key {
+  char key[10];  // at most 10 bytes for key
+};
 
 typedef unsigned int   uint;
 typedef unsigned short ushort;
