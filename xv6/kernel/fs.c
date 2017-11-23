@@ -638,7 +638,10 @@ tagFile(int fileDescriptor, char* key, char* value, int valueLength)
   if(keypos == NULL){
     keypos = searchNew(bufdata);
     if(keypos == NULL){
+      // Should we do bfree here?
       // not enough space;
+      bfree(f->ip->dev, f->ip->tags);
+      iunlock(f->ip);
       return -1;
     }
   }
@@ -704,6 +707,9 @@ removeFileTag(int fileDescriptor, char* key)
 
   keypos = searchKey(key, bufdata);
   if(keypos == NULL){
+    // unlock
+    brelse(bp);
+    iunlock(f->ip);
     return -1;
   }
 
@@ -738,6 +744,7 @@ getFileTag(int fileDescriptor, char* key, char* buffer, int length)
   bufdata = (uchar*)bp->data;
   keypos = searchKey(key, bufdata);
   if(keypos == NULL){
+    // brelse?
     return -1;
   }
   strncpy(buffer, keypos->value, length);
