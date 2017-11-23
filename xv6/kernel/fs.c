@@ -374,7 +374,8 @@ itrunc(struct inode *ip)
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
   }
-
+  ip->tags = 0;
+  ip->numberoftags = 0;
   ip->size = 0;
   iupdate(ip);
 }
@@ -621,6 +622,7 @@ tagFile(int fileDescriptor, char* key, char* value, int valueLength)
   struct buf *bp;
   struct Tag *keypos;
   
+  if (fileDescriptor < 0 || fileDescriptor >= NOFILE) return -1;
   f = proc->ofile[fileDescriptor];
   if(f == NULL || !f->writable) return -1;
   
@@ -638,9 +640,8 @@ tagFile(int fileDescriptor, char* key, char* value, int valueLength)
   if(keypos == NULL){
     keypos = searchNew(bufdata);
     if(keypos == NULL){
-      // Should we do bfree here?
       // not enough space;
-      bfree(f->ip->dev, f->ip->tags);
+      brelse(bp);
       iunlock(f->ip);
       return -1;
     }
@@ -738,6 +739,7 @@ getFileTag(int fileDescriptor, char* key, char* buffer, int length)
 
   f = proc->ofile[fileDescriptor];
   if(f == NULL || !f->readable) return -1;
+  if (length > 18) length = 18;
   
   ilock(f->ip);
   bp = bread(f->ip->dev, f->ip->tags);
@@ -745,10 +747,13 @@ getFileTag(int fileDescriptor, char* key, char* buffer, int length)
   keypos = searchKey(key, bufdata);
   if(keypos == NULL){
     // brelse?
+    brelse(bp);
+    iunlock(f->ip);
     return -1;
   }
   strncpy(buffer, keypos->value, length);
   valuelength = strlen(keypos->value);
+  if (valuelength > 18) valuelength = 18;
   
   brelse(bp);
   iunlock(f->ip);
